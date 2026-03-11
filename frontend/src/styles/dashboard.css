@@ -1,0 +1,358 @@
+.dashboard-page {
+  flex: 1;
+  padding: 2rem 2.5rem;
+  overflow-y: auto;
+  background: #f5f6fa;
+}
+
+/* ── Page Header ─────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.2rem;
+  letter-spacing: -0.4px;
+}
+
+.page-subtitle {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.page-date-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #e4e7ef;
+  border-radius: 10px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.825rem;
+  font-weight: 500;
+  color: #374151;
+  box-shadow: 0 1px 3px rgba(16,24,40,0.05);
+}
+
+.shift-nav-btn {
+  background: #ffffff;
+  border: 1px solid #e4e7ef;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #374151;
+  font-weight: bold;
+  box-shadow: 0 1px 3px rgba(16,24,40,0.05);
+  transition: all 0.2s;
+}
+
+.shift-nav-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  color: #5b5fef;
+  border-color: #d1d5db;
+}
+
+.shift-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Clock Banner ────────────────────────────── */
+.clock-banner {
+  background: linear-gradient(135deg, #5b5fef 0%, #8b5cf6 100%);
+  border-radius: 16px;
+  padding: 1.75rem 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+  box-shadow: 0 8px 24px rgba(91, 95, 239, 0.25);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.clock-display {}
+
+.clock-time {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.clock-date {
+  font-size: 0.875rem;
+  color: rgba(255,255,255,0.65);
+  margin-top: 0.35rem;
+}
+
+.clock-status-area {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.clock-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tracking-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fff;
+  backdrop-filter: blur(8px);
+}
+
+.tracking-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74,222,128,0.8);
+  animation: blink 2s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ── Stat Cards ─────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+.stat-card {
+  background: #ffffff;
+  border: 1px solid #e4e7ef;
+  border-radius: 14px;
+  padding: 1.4rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(16,24,40,0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(16,24,40,0.1);
+}
+
+.stat-card-top-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: 14px 14px 0 0;
+}
+
+.card-start .stat-card-top-bar  { background: linear-gradient(90deg, #5b5fef, #8b5cf6); }
+.card-end .stat-card-top-bar    { background: linear-gradient(90deg, #f43f5e, #ec4899); }
+.card-active .stat-card-top-bar { background: linear-gradient(90deg, #10b981, #34d399); }
+.card-away .stat-card-top-bar   { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+.stat-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+}
+
+.stat-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-icon.icon-start  { background: #eeeffd; color: #5b5fef; }
+.stat-icon.icon-end    { background: #fef0f3; color: #f43f5e; }
+.stat-icon.icon-active { background: #ecfdf5; color: #10b981; }
+.stat-icon.icon-away   { background: #fffbeb; color: #f59e0b; }
+
+.stat-value {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-meta {
+  font-size: 0.775rem;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.badge-active { background: #ecfdf5; color: #059669; }
+.badge-idle   { background: #fffbeb; color: #d97706; }
+.badge-end    { background: #fdf2f8; color: #9c2789; }
+
+/* ── Today's Log ─────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.section-count {
+  font-size: 0.775rem;
+  color: #9ca3af;
+  background: #f5f6fa;
+  border: 1px solid #e4e7ef;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-weight: 500;
+}
+
+.log-card {
+  background: #ffffff;
+  border: 1px solid #e4e7ef;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(16,24,40,0.05);
+}
+
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.log-table th {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 0.875rem 1.25rem;
+  text-align: left;
+  border-bottom: 1px solid #f0f2f8;
+  background: #fafbff;
+}
+
+.log-table td {
+  padding: 0.85rem 1.25rem;
+  font-size: 0.875rem;
+  color: #374151;
+  border-bottom: 1px solid #f5f6fa;
+}
+
+.log-table tr:last-child td {
+  border-bottom: none;
+}
+
+.log-table tbody tr:hover td {
+  background: #fafbff;
+}
+
+.log-empty {
+  padding: 3.5rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.log-empty p {
+  max-width: 280px;
+  line-height: 1.6;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip-green  { background: #ecfdf5; color: #059669; }
+.chip-amber  { background: #fffbeb; color: #d97706; }
+.chip-purple { background: #eeeffd; color: #5b5fef; }
+.chip-slate  { background: #f3f4f6; color: #6b7280; }
+
+/* ── Stub pages ─────────────────────────────── */
+.stub-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: #9ca3af;
+  padding: 4rem;
+  background: #f5f6fa;
+}
+
+.stub-page h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.stub-page p {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}

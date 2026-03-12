@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, LogIn, LogOut, Timer, Coffee, CalendarDays } from 'lucide-react';
+import { Clock, LogIn, LogOut, Timer, Coffee, CalendarDays, Ban } from 'lucide-react';
 import { sessionApi } from '../services/api';
 import '../styles/dashboard.css';
 
@@ -67,6 +67,7 @@ export default function Dashboard() {
   const [localActiveSecs, setLocalActiveSecs] = useState(0);
   const [localAwaySecs, setLocalAwaySecs] = useState(0);
   const [localIdleSecs, setLocalIdleSecs] = useState(0);
+  const [localUnproductiveSecs, setLocalUnproductiveSecs] = useState(0);
 
   // Fetch session data from backend
   const fetchSessions = async () => {
@@ -78,6 +79,7 @@ export default function Dashboard() {
         let active = data.active.activeSeconds || 0;
         let away = data.active.awaySeconds || 0;
         let idle = data.active.idleSeconds || 0;
+        let unproductive = data.active.unproductiveSeconds || 0;
         
         if (data.active.lastHeartbeat) {
           const lastHb = new Date(data.active.lastHeartbeat);
@@ -85,16 +87,19 @@ export default function Dashboard() {
           if (data.active.status === 'active') active += diff;
           if (data.active.status === 'away') away += diff;
           if (data.active.status === 'idle') idle += diff;
+          if (data.active.status === 'unproductive') unproductive += diff;
         }
 
         setLocalActiveSecs(active);
         setLocalAwaySecs(away);
         setLocalIdleSecs(idle);
+        setLocalUnproductiveSecs(unproductive);
       } else {
         setActiveSession(null);
         setLocalActiveSecs(0);
         setLocalAwaySecs(0);
         setLocalIdleSecs(0);
+        setLocalUnproductiveSecs(0);
       }
       setHistory(data.history || []);
     } catch (err) {
@@ -123,6 +128,8 @@ export default function Dashboard() {
           setLocalAwaySecs((s) => s + 1);
         } else if (activeSession.status === 'idle') {
           setLocalIdleSecs((s) => s + 1);
+        } else if (activeSession.status === 'unproductive') {
+          setLocalUnproductiveSecs((s) => s + 1);
         }
       }
     }, 1000);
@@ -172,17 +179,23 @@ export default function Dashboard() {
         <div className="clock-status-area">
           <span className="clock-label">Tracking Status</span>
           <div className="tracking-pill" style={{ 
-            background: activeSession?.status === 'idle' ? 'rgba(245, 158, 11, 0.4)' :
-                        activeSession?.status === 'away' ? 'rgba(239, 68, 68, 0.4)' : 
+            background: activeSession?.status === 'out_of_shift' ? 'rgba(107, 114, 128, 0.4)' :
+                        activeSession?.status === 'idle' ? 'rgba(245, 158, 11, 0.4)' :
+                        activeSession?.status === 'away' ? 'rgba(239, 68, 68, 0.4)' :
+                        activeSession?.status === 'unproductive' ? 'rgba(220, 38, 38, 0.4)' :
                         'rgba(255,255,255,0.15)' 
           }}>
             <span className="tracking-dot" style={{
-              background: activeSession?.status === 'idle' ? '#fbbf24' :
-                          activeSession?.status === 'away' ? '#f87171' : '#4ade80'
+              background: activeSession?.status === 'out_of_shift' ? '#9ca3af' :
+                          activeSession?.status === 'idle' ? '#fbbf24' :
+                          activeSession?.status === 'away' ? '#f87171' :
+                          activeSession?.status === 'unproductive' ? '#f87171' : '#4ade80'
             }} />
             {activeSession 
-              ? (activeSession.status === 'idle' ? 'Idle Time (no input)' :
-                 activeSession.status === 'away' ? 'User Away' : 'Auto-Tracking Active')
+              ? (activeSession.status === 'out_of_shift' ? 'Shift Ended (Off-hours)' :
+                 activeSession.status === 'idle' ? 'Idle Time (no input)' :
+                 activeSession.status === 'away' ? 'User Away' :
+                 activeSession.status === 'unproductive' ? '⚠ Unproductive Activity' : 'Auto-Tracking Active')
               : 'Waiting for Agent...'}
           </div>
         </div>
@@ -267,6 +280,23 @@ export default function Dashboard() {
           <div className="stat-meta">
             {loading ? 'Loading...' : activeSession?.status === 'away' 
               ? <span className="stat-badge badge-end">● Away timer running</span> 
+              : activeSession ? 'Monitored by agent' : '—'}
+          </div>
+        </div>
+
+        {/* Unproductive Time */}
+        <div className="stat-card card-unproductive">
+          <div className="stat-card-top-bar" />
+          <div className="stat-card-header">
+            <span className="stat-label">Unproductive</span>
+            <div className="stat-icon icon-unproductive">
+              <Ban size={16} />
+            </div>
+          </div>
+          <div className="stat-value">{loading ? '—' : formatDuration(localUnproductiveSecs)}</div>
+          <div className="stat-meta">
+            {loading ? 'Loading...' : activeSession?.status === 'unproductive'
+              ? <span className="stat-badge badge-unproductive">● Unproductive timer running</span>
               : activeSession ? 'Monitored by agent' : '—'}
           </div>
         </div>

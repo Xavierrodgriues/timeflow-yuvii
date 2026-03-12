@@ -66,7 +66,7 @@ router.post('/start', async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.post('/heartbeat', async (req, res) => {
   try {
-    const { sessionId, activeSeconds, awaySeconds, idleSeconds, status } = req.body;
+    const { sessionId, activeSeconds, awaySeconds, idleSeconds, unproductiveSeconds, status } = req.body;
 
     const session = await Session.findOne({ _id: sessionId, user: req.user._id });
     if (!session) {
@@ -76,12 +76,13 @@ router.post('/heartbeat', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Session already ended.' });
     }
 
-    session.activeSeconds = activeSeconds ?? session.activeSeconds;
-    session.awaySeconds   = awaySeconds   ?? session.awaySeconds;
-    session.idleSeconds   = idleSeconds   ?? session.idleSeconds;
-    session.totalSeconds  = (activeSeconds ?? 0) + (awaySeconds ?? 0) + (idleSeconds ?? 0);
-    session.status        = status        ?? session.status;
-    session.lastHeartbeat = new Date();
+    session.activeSeconds       = activeSeconds       ?? session.activeSeconds;
+    session.awaySeconds         = awaySeconds         ?? session.awaySeconds;
+    session.idleSeconds         = idleSeconds         ?? session.idleSeconds;
+    session.unproductiveSeconds = unproductiveSeconds ?? session.unproductiveSeconds;
+    session.totalSeconds        = (activeSeconds ?? 0) + (awaySeconds ?? 0) + (idleSeconds ?? 0) + (unproductiveSeconds ?? 0);
+    session.status              = status              ?? session.status;
+    session.lastHeartbeat       = new Date();
 
     await session.save();
 
@@ -100,7 +101,7 @@ router.post('/heartbeat', async (req, res) => {
 router.post('/event', async (req, res) => {
   try {
     const { sessionId, type } = req.body;
-    if (!['active', 'idle', 'away', 'resume'].includes(type)) {
+    if (!['active', 'idle', 'away', 'resume', 'unproductive', 'resume_productive'].includes(type)) {
       return res.status(400).json({ success: false, message: 'Invalid event type.' });
     }
 
@@ -108,14 +109,16 @@ router.post('/event', async (req, res) => {
     if (!session) return res.status(404).json({ success: false, message: 'Session not found.' });
 
     session.events.push({ type, timestamp: new Date() });
-    session.status = type === 'resume' ? 'active' : type;
+    // resume and resume_productive both return to active
+    session.status = (type === 'resume' || type === 'resume_productive') ? 'active' : type;
     
     // Only update these if provided (Agent now sends them)
     if (req.body.activeSeconds !== undefined) session.activeSeconds = req.body.activeSeconds;
     if (req.body.awaySeconds !== undefined) session.awaySeconds = req.body.awaySeconds;
     if (req.body.idleSeconds !== undefined) session.idleSeconds = req.body.idleSeconds;
+    if (req.body.unproductiveSeconds !== undefined) session.unproductiveSeconds = req.body.unproductiveSeconds;
     
-    session.totalSeconds = (session.activeSeconds || 0) + (session.awaySeconds || 0) + (session.idleSeconds || 0);
+    session.totalSeconds = (session.activeSeconds || 0) + (session.awaySeconds || 0) + (session.idleSeconds || 0) + (session.unproductiveSeconds || 0);
     session.lastHeartbeat = new Date();
     await session.save();
 
@@ -133,17 +136,18 @@ router.post('/event', async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.post('/end', async (req, res) => {
   try {
-    const { sessionId, activeSeconds, awaySeconds, idleSeconds } = req.body;
+    const { sessionId, activeSeconds, awaySeconds, idleSeconds, unproductiveSeconds } = req.body;
 
     const session = await Session.findOne({ _id: sessionId, user: req.user._id });
     if (!session) return res.status(404).json({ success: false, message: 'Session not found.' });
 
-    session.endTime      = new Date();
-    session.activeSeconds = activeSeconds ?? session.activeSeconds;
-    session.awaySeconds   = awaySeconds   ?? session.awaySeconds;
-    session.idleSeconds   = idleSeconds   ?? session.idleSeconds;
-    session.totalSeconds  = Math.floor((session.endTime - session.startTime) / 1000);
-    session.status        = 'ended';
+    session.endTime             = new Date();
+    session.activeSeconds       = activeSeconds       ?? session.activeSeconds;
+    session.awaySeconds         = awaySeconds         ?? session.awaySeconds;
+    session.idleSeconds         = idleSeconds         ?? session.idleSeconds;
+    session.unproductiveSeconds = unproductiveSeconds ?? session.unproductiveSeconds;
+    session.totalSeconds        = Math.floor((session.endTime - session.startTime) / 1000);
+    session.status              = 'ended';
     await session.save();
 
     res.status(200).json({ success: true, session });

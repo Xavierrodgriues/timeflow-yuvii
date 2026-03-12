@@ -33,13 +33,17 @@ const sessionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    unproductiveSeconds: {
+      type: Number,
+      default: 0,
+    },
     totalSeconds: {
       type: Number,
       default: 0,
     },
     status: {
       type: String,
-      enum: ['active', 'idle', 'away', 'ended'],
+      enum: ['active', 'idle', 'away', 'unproductive', 'ended', 'out_of_shift'],
       default: 'active',
     },
     // Heartbeat from Python agent (last ping time)
@@ -50,7 +54,7 @@ const sessionSchema = new mongoose.Schema(
     // Granular activity events from Python agent
     events: [
       {
-        type: { type: String, enum: ['active', 'idle', 'away', 'resume'] },
+        type: { type: String, enum: ['active', 'idle', 'away', 'resume', 'unproductive', 'resume_productive', 'out_of_shift'] },
         timestamp: { type: Date, default: Date.now },
       },
     ],

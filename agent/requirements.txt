@@ -1,3 +1,5 @@
 pynput
 requests
 python-dotenv
+pywin32
+psutil

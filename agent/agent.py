@@ -35,6 +35,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 try:
     from pynput import keyboard, mouse  # type: ignore[import]
@@ -453,6 +454,90 @@ def interactive_login():
         print(f"❌ Error: {e}")
 
 
+# ── Local Sync Server ─────────────────────────────────────────────────────────
+class SyncHandler(BaseHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.end_headers()
+
+    def do_POST(self):
+        global API_TOKEN
+        
+        if self.path == '/set-token':
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            try:
+                data = json.loads(body)
+                new_token = data.get('token', '')
+                if new_token:
+                    API_TOKEN = new_token
+                    
+                    # Save to config file
+                    cfg_lines = []
+                    if CONFIG_FILE.exists():
+                        cfg_lines = CONFIG_FILE.read_text().splitlines()
+                    found = False
+                    for i, line in enumerate(cfg_lines):
+                        if line.startswith("TT_API_TOKEN="):
+                            cfg_lines[i] = f"TT_API_TOKEN={new_token}"
+                            found = True
+                    if not found:
+                        cfg_lines.append(f"TT_API_TOKEN={new_token}")
+                    CONFIG_FILE.write_text("\\n".join(cfg_lines) + "\\n")
+                    
+                    log.info("Received new token from Local Sync Server. Starting session...")
+                    if not state.session_id:
+                        start_session()
+                        
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(b'{"success":true}')
+                    return
+            except Exception as e:
+                log.error(f"Error parsing /set-token payload: {e}")
+                
+            self.send_response(400)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"success":false,"message":"Invalid payload"}')
+
+        elif self.path == '/clear-token':
+            log.info("Received clear-token from Local Sync Server. Logging out...")
+            API_TOKEN = ""
+            if state.session_id:
+                end_session()
+                
+            # Clear config file
+            if CONFIG_FILE.exists():
+                cfg_lines = CONFIG_FILE.read_text().splitlines()
+                cfg_lines = [l for l in cfg_lines if not l.startswith("TT_API_TOKEN=")]
+                CONFIG_FILE.write_text("\\n".join(cfg_lines) + "\\n")
+                
+            state.session_id = None
+            state.status = "out_of_shift"
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"success":true}')
+
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+def run_sync_server():
+    server_address = ('127.0.0.1', 5001)
+    httpd = HTTPServer(server_address, SyncHandler)
+    log.info("Local Sync Server running on port 5001")
+    httpd.serve_forever()
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 def main():
     global API_TOKEN
@@ -470,8 +555,7 @@ def main():
     API_TOKEN = os.getenv("TT_API_TOKEN", "")
 
     if not API_TOKEN:
-        log.error("No API token. Run:  python agent.py --login")
-        sys.exit(1)
+        log.warning("No API token found in config. Waiting for User to login via WebApp (Sync Server port 5001)...")
 
     if not WIN32_AVAILABLE:
         log.warning("pywin32/psutil not installed — unproductive window detection disabled.")
@@ -501,6 +585,10 @@ def main():
     # Start monitor in background thread
     monitor_thread = threading.Thread(target=monitor_loop, daemon=True)
     monitor_thread.start()
+    
+    # Start sync server in background thread
+    sync_thread = threading.Thread(target=run_sync_server, daemon=True)
+    sync_thread.start()
 
     log.info("Agent running. Press Ctrl+C to stop.")
 

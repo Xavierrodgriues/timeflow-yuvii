@@ -43,3 +43,27 @@ export const adminApi = {
   createUser: (body) => apiRequest('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
   getUserSessions: (userId, dateStr) => apiRequest(`/admin/users/${userId}/sessions${dateStr ? `?date=${dateStr}` : ''}`),
 };
+
+export const localAgentApi = {
+  setToken: async (token) => {
+    try {
+      await fetch('http://localhost:5001/set-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+    } catch (err) {
+      // Ignore if the agent isn't running on this machine
+      console.log('Local Python agent not detected.');
+    }
+  },
+  clearToken: async () => {
+    try {
+      await fetch('http://localhost:5001/clear-token', {
+        method: 'POST'
+      });
+    } catch (err) {
+      // Ignore
+    }
+  }
+};

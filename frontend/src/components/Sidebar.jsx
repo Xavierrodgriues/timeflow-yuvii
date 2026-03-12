@@ -14,10 +14,16 @@ import {
 } from 'lucide-react';
 import '../styles/sidebar.css';
 
-const navItems = [
+const userNavItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { label: 'Reports',   icon: BarChart2,       path: '/reports' },
   { label: 'Team',      icon: Users,           path: '/team' },
+  { label: 'Settings',  icon: Settings,        path: '/settings' },
+  { label: 'Profile',   icon: User,            path: '/profile' },
+];
+
+const adminNavItems = [
+  { label: 'Users Mgt', icon: Users,           path: '/admin/users' },
   { label: 'Settings',  icon: Settings,        path: '/settings' },
   { label: 'Profile',   icon: User,            path: '/profile' },
 ];
@@ -29,6 +35,8 @@ export default function Sidebar() {
   const location = useLocation();
 
   const initial = user?.name ? user.name[0].toUpperCase() : '?';
+  const roleDisplay = user?.role === 'admin' ? 'Administrator' : 'Team Member';
+  const navItems = user?.role === 'admin' ? adminNavItems : userNavItems;
 
   const handleNav = (path) => navigate(path);
   const handleLogout = () => {
@@ -72,7 +80,7 @@ export default function Sidebar() {
           <div className="user-avatar">{initial}</div>
           <div className="user-info">
             <div className="user-name">{user?.name}</div>
-            <div className="user-role">Team Member</div>
+            <div className="user-role">{roleDisplay}</div>
           </div>
         </div>
         <button

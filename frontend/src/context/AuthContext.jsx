@@ -50,6 +50,18 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const adminLogin = async ({ email, password }) => {
+    try {
+      const data = await authApi.adminLogin({ email, password });
+      localStorage.setItem('tt_token', data.token);
+      localStorage.setItem('tt_user', JSON.stringify(data.user));
+      setUser(data.user);
+      return { success: true };
+    } catch (err) {
+      return { error: err.message };
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('tt_token');
     localStorage.removeItem('tt_user');
@@ -57,7 +69,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, adminLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

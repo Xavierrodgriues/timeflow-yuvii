@@ -81,6 +81,45 @@ router.post(
   }
 );
 
+// POST /api/auth/admin/login
+router.post(
+  '/admin/login',
+  [
+    body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+    body('password').notEmpty().withMessage('Password is required'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    try {
+      const { email, password } = req.body;
+
+      const user = await User.findOne({ email }).select('+password');
+      if (!user || !(await user.comparePassword(password))) {
+        return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+      }
+
+      if (user.role !== 'admin') {
+        return res.status(403).json({ success: false, message: 'Access denied. Admin privileges required.' });
+      }
+
+      const token = signToken(user._id);
+
+      res.status(200).json({
+        success: true,
+        token,
+        user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      });
+    } catch (err) {
+      console.error('Admin login error:', err);
+      res.status(500).json({ success: false, message: 'Server error during admin login.' });
+    }
+  }
+);
+
 // GET /api/auth/me  – verify token and return current user
 router.get('/me', protect, async (req, res) => {
   res.status(200).json({ success: true, user: req.user });

@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 
 const authRoutes    = require('./routes/auth');
 const sessionRoutes = require('./routes/sessions');
+const adminRoutes   = require('./routes/admin');
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 // ── Routes ───────────────────────────────────────────────────
 app.use('/api/auth',     authRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/admin',    adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

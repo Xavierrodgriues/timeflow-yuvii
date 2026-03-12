@@ -18,10 +18,10 @@ export async function apiRequest(path, options = {}) {
 }
 
 export const authApi = {
-  register: (body) =>
-    apiRequest('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
   login: (body) =>
     apiRequest('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+  adminLogin: (body) =>
+    apiRequest('/auth/admin/login', { method: 'POST', body: JSON.stringify(body) }),
   me: () => apiRequest('/auth/me'),
 };
 
@@ -36,6 +36,10 @@ export const sessionApi = {
     apiRequest('/sessions/end', { method: 'POST', body: JSON.stringify(body) }),
   today: (date) =>
     apiRequest(`/sessions/today${date ? `?date=${date}` : ''}`),
-  history: (days = 7) =>
-    apiRequest(`/sessions/history?days=${days}`),
+};
+
+export const adminApi = {
+  getUsers: () => apiRequest('/admin/users'),
+  createUser: (body) => apiRequest('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
+  getUserSessions: (userId, dateStr) => apiRequest(`/admin/users/${userId}/sessions${dateStr ? `?date=${dateStr}` : ''}`),
 };

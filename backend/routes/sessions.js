@@ -29,21 +29,32 @@ function getShiftDateStr() {
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/sessions/start
-// Called by Python agent when system starts / user logs in
+// Called by Python agent when system starts / Or UI Start button
 // ─────────────────────────────────────────────────────────────
 router.post('/start', async (req, res) => {
   try {
+    const { fromUI } = req.body || {};
     const date = getShiftDateStr();
 
-    // Check if there's already an active session today and end it (Agent restarted)
-    const existing = await Session.findOne({ user: req.user._id, date, status: { $ne: 'ended' } });
+    // Check if there's an active session
+    let existing = await Session.findOne({ user: req.user._id, date, status: { $ne: 'ended' } });
+
     if (existing) {
-      existing.status = 'ended';
-      existing.endTime = new Date();
-      existing.totalSeconds = Math.floor((existing.endTime - existing.startTime) / 1000);
-      await existing.save();
+      if (fromUI) {
+        // If UI calls start but it's already active, just return it
+        return res.status(200).json({ success: true, session: existing, resumed: true });
+      } else {
+        // Agent calls start and it's active, resume tracking
+        return res.status(200).json({ success: true, session: existing, resumed: true });
+      }
     }
 
+    if (!fromUI) {
+      // Agent is trying to start tracking, but the user hasn't pressed Start yet in the UI
+      return res.status(400).json({ success: false, waitingForUser: true, message: 'Waiting for user to click Start in UI.' });
+    }
+
+    // fromUI is true and no existing session -> start one!
     const session = await Session.create({
       user: req.user._id,
       date,

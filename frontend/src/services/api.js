@@ -26,8 +26,8 @@ export const authApi = {
 };
 
 export const sessionApi = {
-  start: () =>
-    apiRequest('/sessions/start', { method: 'POST' }),
+  start: (body) =>
+    apiRequest('/sessions/start', { method: 'POST', body: JSON.stringify(body) }),
   heartbeat: (body) =>
     apiRequest('/sessions/heartbeat', { method: 'POST', body: JSON.stringify(body) }),
   event: (body) =>

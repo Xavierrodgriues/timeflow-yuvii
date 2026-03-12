@@ -252,14 +252,27 @@ def api_get(path):
 
 # ── Session management ────────────────────────────────────────────────────────
 def start_session():
-    log.info("Starting session…")
-    data = api_post("/sessions/start")
-    if data and data.get("success"):
-        state.session_id    = data["session"]["_id"]
-        state.session_start = datetime.now()
-        resumed = data.get("resumed", False)
-        log.info(f"Session {'resumed' if resumed else 'started'}: {state.session_id}")
-        return True
+    data = api_post("/sessions/start", {"fromUI": False})
+    if data:
+        if data.get("success"):
+            state.session_id    = data["session"]["_id"]
+            state.session_start = datetime.now()
+            
+            # Carry over the session counters from the backend to ensure we are in sync when resuming
+            state.active_seconds = data["session"].get("activeSeconds", 0)
+            state.idle_seconds   = data["session"].get("idleSeconds", 0)
+            state.away_seconds   = data["session"].get("awaySeconds", 0)
+            state.unproductive_seconds = data["session"].get("unproductiveSeconds", 0)
+            state.status         = "active" # Force active on resume/start
+            state._last_tick     = time.time()
+            
+            resumed = data.get("resumed", False)
+            log.info(f"Session {'resumed' if resumed else 'started'}: {state.session_id}")
+            return True
+        elif data.get("waitingForUser"):
+            log.info("Waiting for user to click 'Start' in the UI...")
+            return False
+            
     log.error(f"Failed to start session: {data}")
     return False
 
@@ -281,7 +294,7 @@ def end_session():
 def send_heartbeat():
     if not state.session_id:
         return
-    api_post("/sessions/heartbeat", {
+    data = api_post("/sessions/heartbeat", {
         "sessionId":            state.session_id,
         "activeSeconds":        int(state.active_seconds),
         "idleSeconds":          int(state.idle_seconds),
@@ -289,6 +302,14 @@ def send_heartbeat():
         "unproductiveSeconds":  int(state.unproductive_seconds),
         "status":               state.status,
     })
+    
+    if data and not data.get("success"):
+        if "ended" in data.get("message", "").lower():
+            log.info("Session ended by user in UI.")
+            state.session_id = None
+            state.status = "out_of_shift"
+            return
+            
     log.debug("Heartbeat sent.")
 
 
@@ -331,6 +352,12 @@ def monitor_loop():
     while True:
         time.sleep(1)
         
+        if not state.session_id:
+            if heartbeat_counter % 10 == 0:
+                start_session()
+            heartbeat_counter += 1
+            continue
+            
         if not is_in_shift():
             if state.status != "out_of_shift":
                 state.status = "out_of_shift"
@@ -458,10 +485,8 @@ def main():
     log.info(f"  Unproductive apps: {', '.join(sorted(UNPRODUCTIVE_APPS))}")
     log.info(f"  Unproductive domains: {', '.join(sorted(UNPRODUCTIVE_DOMAINS))}")
 
-    # Start session
-    if not start_session():
-        log.error("Could not start session. Check your API_TOKEN and backend URL.")
-        sys.exit(1)
+    # Start session if possible, otherwise monitor_loop will keep trying
+    start_session()
 
     # Start input listeners (suppressed=False so normal input still works)
     kb_listener    = keyboard.Listener(on_press=on_key_press)

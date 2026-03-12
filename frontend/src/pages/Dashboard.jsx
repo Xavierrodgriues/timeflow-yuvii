@@ -63,11 +63,55 @@ export default function Dashboard() {
   const currentShiftStr = getShiftDateStr(offsetDays);
   const isCurrentShift = offsetDays === 0;
 
-  // Local counters that increment between API fetches
   const [localActiveSecs, setLocalActiveSecs] = useState(0);
   const [localAwaySecs, setLocalAwaySecs] = useState(0);
   const [localIdleSecs, setLocalIdleSecs] = useState(0);
   const [localUnproductiveSecs, setLocalUnproductiveSecs] = useState(0);
+
+  const [loadingAction, setLoadingAction] = useState(false);
+
+  const isPast459AM = (d) => {
+    const h = d.getHours();
+    const m = d.getMinutes();
+    if (h === 4 && m >= 59) return true;
+    if (h >= 5 && (h < 19 || (h === 19 && m < 30))) return true;
+    return false;
+  };
+
+  const canStop = localActiveSecs >= 28800 || isPast459AM(now);
+
+  const handleStartTracking = async () => {
+    setLoadingAction(true);
+    try {
+      await sessionApi.start({ fromUI: true });
+      await fetchSessions();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to start tracking');
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const handleStopTracking = async () => {
+    if (!activeSession) return;
+    setLoadingAction(true);
+    try {
+      await sessionApi.end({
+        sessionId: activeSession._id,
+        activeSeconds: localActiveSecs,
+        idleSeconds: localIdleSecs,
+        awaySeconds: localAwaySecs,
+        unproductiveSeconds: localUnproductiveSecs
+      });
+      await fetchSessions();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to stop tracking');
+    } finally {
+      setLoadingAction(false);
+    }
+  };
 
   // Fetch session data from backend
   const fetchSessions = async () => {
@@ -198,6 +242,32 @@ export default function Dashboard() {
                  activeSession.status === 'unproductive' ? '⚠ Unproductive Activity' : 'Auto-Tracking Active')
               : 'Waiting for Agent...'}
           </div>
+        </div>
+      </div>
+
+      {/* Tracking Controls */}
+      <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', marginBottom: '1.5rem', padding: '1rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Tracking Controls</h3>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Start the timer to record your shift. The stop button activates after 8 hours of active time or at 4:59 AM.
+          </p>
+        </div>
+        <div>
+          {!activeSession ? (
+            <button className="btn-start-tracking" onClick={handleStartTracking} disabled={loadingAction}>
+              {loadingAction ? 'Starting...' : 'Start Tracking'}
+            </button>
+          ) : (
+            <button 
+              className="btn-stop-tracking" 
+              onClick={handleStopTracking} 
+              disabled={loadingAction || !canStop}
+              title={!canStop ? "Stop available after 8 hours of active time or at 4:59 AM" : "Stop session"}
+            >
+              {loadingAction ? 'Stopping...' : 'Stop Tracking'}
+            </button>
+          )}
         </div>
       </div>
 

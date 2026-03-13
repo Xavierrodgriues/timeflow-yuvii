@@ -447,20 +447,8 @@ def interactive_login():
         data = r.json()
         if data.get("success"):
             token = data["token"]
-            # Write to config file
-            cfg_lines = []
-            if CONFIG_FILE.exists():
-                cfg_lines = CONFIG_FILE.read_text().splitlines()
-            # Replace or append TT_API_TOKEN
-            found = False
-            for i, line in enumerate(cfg_lines):
-                if line.startswith("TT_API_TOKEN="):
-                    cfg_lines[i] = f"TT_API_TOKEN={token}"
-                    found = True
-            if not found:
-                cfg_lines.append(f"TT_API_TOKEN={token}")
-            CONFIG_FILE.write_text("\n".join(cfg_lines) + "\n")
-            print(f"\n✅ Logged in as {data['user']['name']}. Token saved to agent_config.env")
+            API_TOKEN = token
+            print(f"\n✅ Logged in as {data['user']['name']}.")
             print("Now run:  python agent.py\n")
         else:
             print(f"❌ Login failed: {data.get('message', 'Unknown error')}")
@@ -492,19 +480,6 @@ class SyncHandler(BaseHTTPRequestHandler):
                 if new_token:
                     API_TOKEN = new_token
                     
-                    # Save to config file
-                    cfg_lines = []
-                    if CONFIG_FILE.exists():
-                        cfg_lines = CONFIG_FILE.read_text().splitlines()
-                    found = False
-                    for i, line in enumerate(cfg_lines):
-                        if line.startswith("TT_API_TOKEN="):
-                            cfg_lines[i] = f"TT_API_TOKEN={new_token}"
-                            found = True
-                    if not found:
-                        cfg_lines.append(f"TT_API_TOKEN={new_token}")
-                    CONFIG_FILE.write_text("\\n".join(cfg_lines) + "\\n")
-                    
                     log.info("Received new token from Local Sync Server. Starting session...")
                     if not state.session_id:
                         start_session()
@@ -527,12 +502,6 @@ class SyncHandler(BaseHTTPRequestHandler):
             API_TOKEN = ""
             if state.session_id:
                 end_session()
-                
-            # Clear config file
-            if CONFIG_FILE.exists():
-                cfg_lines = CONFIG_FILE.read_text().splitlines()
-                cfg_lines = [l for l in cfg_lines if not l.startswith("TT_API_TOKEN=")]
-                CONFIG_FILE.write_text("\\n".join(cfg_lines) + "\\n")
                 
             state.session_id = None
             state.status = "out_of_shift"

@@ -35,7 +35,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 try:
     from pynput import keyboard, mouse  # type: ignore[import]
@@ -58,7 +58,12 @@ except ImportError:
     WIN32_AVAILABLE = False
 
 # ── Config ──────────────────────────────────────────────────────────────────
-CONFIG_FILE = Path(__file__).parent / "agent_config.env"
+if getattr(sys, 'frozen', False):
+    APP_DIR = Path(sys.executable).parent
+else:
+    APP_DIR = Path(__file__).parent
+
+CONFIG_FILE = APP_DIR / "agent_config.env"
 load_dotenv(CONFIG_FILE)
 
 API_BASE        = os.getenv("TT_API_BASE", "http://localhost:5000/api")
@@ -72,7 +77,7 @@ UNPRODUCTIVE_KEYWORDS = set([
     "steam.exe", "epicgameslauncher.exe", "spotify.exe", "discord.exe",
     "facebook", "instagram", "youtube", "netflix", "tiktok", "reddit", "amazon", "flipkart"
 ])
-CACHE_FILE = Path(__file__).parent / "local_keywords.json"
+CACHE_FILE = APP_DIR / "local_keywords.json"
 
 def load_local_keywords():
     global UNPRODUCTIVE_KEYWORDS
@@ -458,14 +463,28 @@ def interactive_login():
 
 # ── Local Sync Server ─────────────────────────────────────────────────────────
 class SyncHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        try:
+            log.info(format % args)
+        except:
+            pass
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(b'{"status":"agent_running"}')
+
     def end_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        origin = self.headers.get('Origin', '*')
+        self.send_header('Access-Control-Allow-Origin', origin)
+        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept')
+        self.send_header('Access-Control-Allow-Private-Network', 'true')
         super().end_headers()
 
     def do_OPTIONS(self):
-        self.send_response(200)
+        self.send_response(204)
         self.end_headers()
 
     def do_POST(self):
@@ -523,7 +542,7 @@ class SyncHandler(BaseHTTPRequestHandler):
 
 def run_sync_server():
     server_address = ('127.0.0.1', 5001)
-    httpd = HTTPServer(server_address, SyncHandler)
+    httpd = ThreadingHTTPServer(server_address, SyncHandler)
     log.info("Local Sync Server running on port 5001")
     httpd.serve_forever()
 

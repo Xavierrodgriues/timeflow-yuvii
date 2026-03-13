@@ -67,24 +67,44 @@ HEARTBEAT_SEC   = int(os.getenv("TT_HEARTBEAT_SEC", "30"))   # how often to push
 IDLE_THRESHOLD  = int(os.getenv("TT_IDLE_SEC",  "30"))       # 30s → idle
 AWAY_THRESHOLD  = int(os.getenv("TT_AWAY_SEC", "60"))        # 1 minute → away
 
-# ── Unproductive App / Domain Lists ─────────────────────────────────────────
-UNPRODUCTIVE_APPS = {
-    "steam.exe",
-    "epicgameslauncher.exe",
-    "spotify.exe",
-    "discord.exe",
-}
+# ── Unproductive Keywords List ──────────────────────────────────────────────
+UNPRODUCTIVE_KEYWORDS = set([
+    "steam.exe", "epicgameslauncher.exe", "spotify.exe", "discord.exe",
+    "facebook", "instagram", "youtube", "netflix", "tiktok", "reddit", "amazon", "flipkart"
+])
+CACHE_FILE = Path(__file__).parent / "local_keywords.json"
 
-UNPRODUCTIVE_DOMAINS = {
-    "facebook.com",
-    "instagram.com",
-    "youtube.com",
-    "netflix.com",
-    "tiktok.com",
-    "reddit.com",
-    "amazon.com",
-    "flipkart.com",
-}
+def load_local_keywords():
+    global UNPRODUCTIVE_KEYWORDS
+    if CACHE_FILE.exists():
+        try:
+            with open(CACHE_FILE, "r") as f:
+                data = json.load(f)
+                UNPRODUCTIVE_KEYWORDS = set(data.get("keywords", []))
+                log.info(f"Loaded {len(UNPRODUCTIVE_KEYWORDS)} unproductive keywords from local cache.")
+        except Exception as e:
+            log.warning(f"Failed to load keywords from local cache: {e}")
+
+def fetch_and_update_keywords():
+    global UNPRODUCTIVE_KEYWORDS
+    try:
+        r = requests.get(
+            f"{API_BASE}/auth/config/unproductive",
+            timeout=10,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            if data.get("success") and "keywords" in data:
+                UNPRODUCTIVE_KEYWORDS = set(data["keywords"])
+                # Save to local cache
+                try:
+                    with open(CACHE_FILE, "w") as f:
+                        json.dump({"keywords": list(UNPRODUCTIVE_KEYWORDS)}, f)
+                except Exception as e:
+                    log.warning(f"Failed to save keywords to local cache: {e}")
+                log.debug(f"Fetched {len(UNPRODUCTIVE_KEYWORDS)} unproductive keywords from server.")
+    except Exception as e:
+        log.warning(f"Failed to fetch unproductive keywords from server, using local cache ({e})")
 
 # Browser process names to check window title for domain detection
 BROWSER_PROCESSES = {
@@ -144,20 +164,12 @@ def is_unproductive_window() -> bool:
     proc_name: str = result[0]
     title: str = result[1]
 
-    # Check unproductive apps directly (e.g. steam.exe, discord.exe)
-    if proc_name in UNPRODUCTIVE_APPS:
-        return True
-
-    # Check browser tabs via window title
-    if proc_name in BROWSER_PROCESSES:
-        for domain in UNPRODUCTIVE_DOMAINS:
-            # Extract base name before first dot: "instagram.com" → "instagram"
-            base_name = domain.split('.')[0]   # e.g. "instagram"
-            if base_name in title:
-                return True
-            # Also check full domain in case the URL appears in the title
-            if domain in title:
-                return True
+    # Check all unproductive keywords against either the process name or window title
+    for keyword in UNPRODUCTIVE_KEYWORDS:
+        # Lowercase everything for matching
+        kw = keyword.lower()
+        if kw in proc_name or kw in title:
+            return True
 
     return False
 
@@ -415,6 +427,8 @@ def monitor_loop():
         heartbeat_counter += 1
         if heartbeat_counter >= HEARTBEAT_SEC:
             send_heartbeat()
+            # Also fetch updated keywords periodically during heartbeat
+            fetch_and_update_keywords()
             heartbeat_counter = 0
 
 
@@ -566,8 +580,10 @@ def main():
     log.info(f"  Idle threshold : {IDLE_THRESHOLD}s")
     log.info(f"  Away threshold : {AWAY_THRESHOLD}s")
     log.info(f"  Heartbeat every: {HEARTBEAT_SEC}s")
-    log.info(f"  Unproductive apps: {', '.join(sorted(UNPRODUCTIVE_APPS))}")
-    log.info(f"  Unproductive domains: {', '.join(sorted(UNPRODUCTIVE_DOMAINS))}")
+
+    # Load initial keywords
+    load_local_keywords()
+    fetch_and_update_keywords()
 
     # Start session if possible, otherwise monitor_loop will keep trying
     start_session()

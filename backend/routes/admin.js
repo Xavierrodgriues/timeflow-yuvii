@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Session = require('../models/Session');
+const Config = require('../models/Config');
 const { protect, adminOnly } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
@@ -276,6 +277,53 @@ router.put('/claims/:id', async (req, res) => {
   } catch (err) {
     console.error('Update claim error:', err);
     res.status(500).json({ success: false, message: 'Failed to update claim.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// CONFIGURATION ROUTES
+// ─────────────────────────────────────────────────────────────
+
+// GET /api/admin/config/unproductive
+router.get('/config/unproductive', async (req, res) => {
+  try {
+    let config = await Config.findOne({ key: 'unproductiveKeywords' });
+    if (!config) {
+      // Seed default if it doesn't exist
+      config = await Config.create({
+        key: 'unproductiveKeywords',
+        value: [
+          'steam.exe', 'epicgameslauncher.exe', 'spotify.exe', 'discord.exe',
+          'facebook', 'instagram', 'youtube', 'netflix', 'tiktok', 'reddit', 'amazon', 'flipkart'
+        ]
+      });
+    }
+    res.status(200).json({ success: true, keywords: config.value });
+  } catch (err) {
+    console.error('Fetch config error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch configuration.' });
+  }
+});
+
+// PUT /api/admin/config/unproductive
+router.put('/config/unproductive', async (req, res) => {
+  try {
+    const { keywords } = req.body;
+    if (!Array.isArray(keywords)) {
+      return res.status(400).json({ success: false, message: 'Keywords must be an array.' });
+    }
+
+    let config = await Config.findOne({ key: 'unproductiveKeywords' });
+    if (!config) {
+      config = new Config({ key: 'unproductiveKeywords' });
+    }
+    config.value = keywords;
+    await config.save();
+
+    res.status(200).json({ success: true, keywords: config.value });
+  } catch (err) {
+    console.error('Update config error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update configuration.' });
   }
 });
 

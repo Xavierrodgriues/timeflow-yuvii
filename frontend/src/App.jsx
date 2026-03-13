@@ -12,6 +12,7 @@ import UsersList from './pages/admin/UsersList';
 import UserDetail from './pages/admin/UserDetail';
 import Claims from './pages/Claims';
 import AdminClaims from './pages/admin/AdminClaims';
+import AdminSettings from './pages/admin/AdminSettings';
 
 import './index.css';
 
@@ -91,6 +92,11 @@ function AppRoutes() {
       <Route path="/admin/claims" element={
         <ProtectedRoute>
           <Layout><AdminClaims /></Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/settings" element={
+        <ProtectedRoute>
+          <Layout><AdminSettings /></Layout>
         </ProtectedRoute>
       } />
 

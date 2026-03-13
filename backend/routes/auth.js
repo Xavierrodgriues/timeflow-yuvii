@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
+const Config = require('../models/Config');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -123,6 +124,26 @@ router.post(
 // GET /api/auth/me  – verify token and return current user
 router.get('/me', protect, async (req, res) => {
   res.status(200).json({ success: true, user: req.user });
+});
+
+// GET /api/auth/config/unproductive - Publicly accessible for the Python agent
+router.get('/config/unproductive', async (req, res) => {
+  try {
+    let config = await Config.findOne({ key: 'unproductiveKeywords' });
+    if (!config) {
+      config = await Config.create({
+        key: 'unproductiveKeywords',
+        value: [
+          'steam.exe', 'epicgameslauncher.exe', 'spotify.exe', 'discord.exe',
+          'facebook', 'instagram', 'youtube', 'netflix', 'tiktok', 'reddit', 'amazon', 'flipkart'
+        ]
+      });
+    }
+    res.status(200).json({ success: true, keywords: config.value });
+  } catch (err) {
+    console.error('Fetch config error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch configuration.' });
+  }
 });
 
 module.exports = router;

@@ -50,6 +50,8 @@ export const adminApi = {
   getUserSessions: (userId, dateStr) => apiRequest(`/admin/users/${userId}/sessions${dateStr ? `?date=${dateStr}` : ''}`),
   getClaims: () => apiRequest('/admin/claims'),
   updateClaimStatus: (id, status) => apiRequest(`/admin/claims/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  getUnproductiveConfig: () => apiRequest('/admin/config/unproductive'),
+  updateUnproductiveConfig: (keywords) => apiRequest('/admin/config/unproductive', { method: 'PUT', body: JSON.stringify({ keywords }) }),
 };
 
 export const claimApi = {

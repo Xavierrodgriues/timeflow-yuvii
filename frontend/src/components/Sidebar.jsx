@@ -27,7 +27,7 @@ const userNavItems = [
 const adminNavItems = [
   { label: 'Users Mgt', icon: Users,           path: '/admin/users' },
   { label: 'Claims Mgt', icon: FileText,       path: '/admin/claims' },
-  { label: 'Settings',  icon: Settings,        path: '/settings' },
+  { label: 'Settings',  icon: Settings,        path: '/admin/settings' },
   { label: 'Profile',   icon: User,            path: '/profile' },
 ];
 

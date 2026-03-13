@@ -478,6 +478,12 @@ class SyncHandler(BaseHTTPRequestHandler):
                 data = json.loads(body)
                 new_token = data.get('token', '')
                 if new_token:
+                    if API_TOKEN and API_TOKEN != new_token:
+                        log.info("Token changed → ending previous session")
+                        if state.session_id:
+                            end_session()
+                            state.session_id = None
+
                     API_TOKEN = new_token
                     
                     log.info("Received new token from Local Sync Server. Starting session...")

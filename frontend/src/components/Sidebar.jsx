@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  FileText,
 } from 'lucide-react';
 import '../styles/sidebar.css';
 
@@ -18,12 +19,14 @@ const userNavItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { label: 'Reports',   icon: BarChart2,       path: '/reports' },
   { label: 'Team',      icon: Users,           path: '/team' },
+  { label: 'Time Claims', icon: FileText,      path: '/claims' },
   { label: 'Settings',  icon: Settings,        path: '/settings' },
   { label: 'Profile',   icon: User,            path: '/profile' },
 ];
 
 const adminNavItems = [
   { label: 'Users Mgt', icon: Users,           path: '/admin/users' },
+  { label: 'Claims Mgt', icon: FileText,       path: '/admin/claims' },
   { label: 'Settings',  icon: Settings,        path: '/settings' },
   { label: 'Profile',   icon: User,            path: '/profile' },
 ];

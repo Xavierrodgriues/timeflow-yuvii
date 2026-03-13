@@ -20,9 +20,13 @@ export function AuthProvider({ children }) {
         setUser(data.user);
         localAgentApi.setToken(token); // Sync existing valid token to local agent
       })
-      .catch(() => {
-        localStorage.removeItem('tt_token');
-        localStorage.removeItem('tt_user');
+      .catch((err) => {
+        // Only log out if it's explicitly a 401 Unauthorized
+        // Otherwise it could just be a temporary network timeout / restart
+        if (err.status === 401) {
+          localStorage.removeItem('tt_token');
+          localStorage.removeItem('tt_user');
+        }
       })
       .finally(() => setLoading(false));
   }, []);

@@ -12,8 +12,12 @@ export async function apiRequest(path, options = {}) {
     ...options.headers,
   };
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Request failed');
+  const data = await res.json().catch(() => ({})); // Handle non-JSON responses safely
+  if (!res.ok) {
+    const error = new Error(data.message || 'Request failed');
+    error.status = res.status;
+    throw error;
+  }
   return data;
 }
 
@@ -42,6 +46,13 @@ export const adminApi = {
   getUsers: () => apiRequest('/admin/users'),
   createUser: (body) => apiRequest('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
   getUserSessions: (userId, dateStr) => apiRequest(`/admin/users/${userId}/sessions${dateStr ? `?date=${dateStr}` : ''}`),
+  getClaims: () => apiRequest('/admin/claims'),
+  updateClaimStatus: (id, status) => apiRequest(`/admin/claims/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
+};
+
+export const claimApi = {
+  create: (body) => apiRequest('/claims', { method: 'POST', body: JSON.stringify(body) }),
+  getMy: () => apiRequest('/claims/my'),
 };
 
 export const localAgentApi = {

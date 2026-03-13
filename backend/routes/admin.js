@@ -110,4 +110,94 @@ router.get('/users/:userId/sessions', async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// GET /api/admin/claims
+// Admin views all time claims
+// ─────────────────────────────────────────────────────────────
+router.get('/claims', async (req, res) => {
+  try {
+    const TimeClaim = require('../models/TimeClaim');
+    const claims = await TimeClaim.find()
+      .populate('userId', 'name email')
+      .populate('reviewedBy', 'name email')
+      .sort({ createdAt: -1 });
+    res.status(200).json({ success: true, claims });
+  } catch (err) {
+    console.error('Fetch all claims error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch claims.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// PUT /api/admin/claims/:id
+// Admin approves or rejects a time claim
+// ─────────────────────────────────────────────────────────────
+router.put('/claims/:id', async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status.' });
+    }
+
+    const TimeClaim = require('../models/TimeClaim');
+    const claim = await TimeClaim.findById(req.params.id);
+    if (!claim) {
+      return res.status(404).json({ success: false, message: 'Claim not found.' });
+    }
+
+    if (claim.status !== 'pending') {
+      return res.status(400).json({ success: false, message: `Claim is already ${claim.status}.` });
+    }
+
+    claim.status = status;
+    claim.reviewedBy = req.user._id;
+    claim.reviewedAt = new Date();
+    await claim.save();
+
+    // If approved, apply the time adjustment to the user's session for that date
+    if (status === 'approved') {
+      // Find the first session for that user & date, or create one if they didn't work at all that day
+      let session = await Session.findOne({ user: claim.userId, date: claim.date }).sort({ startTime: 1 });
+      
+      if (!session) {
+        // No session exists for that date. The user missed the shift completely, but got manual time.
+        // Create an "ended" session containing just the manual time.
+        const d = new Date(`${claim.date}T12:00:00`);
+        session = new Session({
+          user: claim.userId,
+          date: claim.date,
+          startTime: d,
+          endTime: new Date(d.getTime() + claim.durationSeconds * 1000),
+          status: 'ended',
+          activeSeconds: 0,
+          idleSeconds: 0,
+          awaySeconds: 0,
+          unproductiveSeconds: 0,
+          totalSeconds: 0
+        });
+      }
+
+      // Add the claimed duration to the session
+      session.activeSeconds = (session.activeSeconds || 0) + claim.durationSeconds;
+      session.totalSeconds = (session.totalSeconds || 0) + claim.durationSeconds;
+      
+      // Update endTime to ensure the span reflects the new total if the session is ended
+      if (session.status === 'ended' && session.endTime && session.startTime) {
+        // Ensure the end time extends to fit the new total duration
+        const minimumEndTime = new Date(session.startTime.getTime() + session.totalSeconds * 1000);
+        if (session.endTime < minimumEndTime) {
+          session.endTime = minimumEndTime;
+        }
+      }
+
+      await session.save();
+    }
+
+    res.status(200).json({ success: true, claim });
+  } catch (err) {
+    console.error('Update claim error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update claim.' });
+  }
+});
+
 module.exports = router;

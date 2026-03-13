@@ -10,6 +10,8 @@ import SettingsPage from './pages/SettingsPage';
 import Profile from './pages/Profile';
 import UsersList from './pages/admin/UsersList';
 import UserDetail from './pages/admin/UserDetail';
+import Claims from './pages/Claims';
+import AdminClaims from './pages/admin/AdminClaims';
 
 import './index.css';
 
@@ -69,6 +71,11 @@ function AppRoutes() {
           <Layout><Profile /></Layout>
         </ProtectedRoute>
       } />
+      <Route path="/claims" element={
+        <ProtectedRoute>
+          <Layout><Claims /></Layout>
+        </ProtectedRoute>
+      } />
 
       {/* Admin Routes */}
       <Route path="/admin/users" element={
@@ -79,6 +86,11 @@ function AppRoutes() {
       <Route path="/admin/users/:userId" element={
         <ProtectedRoute>
           <Layout><UserDetail /></Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/claims" element={
+        <ProtectedRoute>
+          <Layout><AdminClaims /></Layout>
         </ProtectedRoute>
       } />
 

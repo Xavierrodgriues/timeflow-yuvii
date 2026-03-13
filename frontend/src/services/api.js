@@ -45,6 +45,8 @@ export const sessionApi = {
 export const adminApi = {
   getUsers: () => apiRequest('/admin/users'),
   createUser: (body) => apiRequest('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
+  updateUser: (userId, body) => apiRequest(`/admin/users/${userId}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteUser: (userId) => apiRequest(`/admin/users/${userId}`, { method: 'DELETE' }),
   getUserSessions: (userId, dateStr) => apiRequest(`/admin/users/${userId}/sessions${dateStr ? `?date=${dateStr}` : ''}`),
   getClaims: () => apiRequest('/admin/claims'),
   updateClaimStatus: (id, status) => apiRequest(`/admin/claims/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),

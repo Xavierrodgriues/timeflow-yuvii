@@ -66,7 +66,7 @@ else:
 CONFIG_FILE = APP_DIR / "agent_config.env"
 load_dotenv(CONFIG_FILE)
 
-API_BASE        = os.getenv("TT_API_BASE", "http://localhost:5000/api")
+API_BASE        = os.getenv("TT_API_BASE", "https://timeflow-backend.yuviiconsultancy.com/api")
 API_TOKEN       = os.getenv("TT_API_TOKEN", "")  # JWT token
 HEARTBEAT_SEC   = int(os.getenv("TT_HEARTBEAT_SEC", "30"))   # how often to push data
 IDLE_THRESHOLD  = int(os.getenv("TT_IDLE_SEC",  "30"))       # 30s → idle

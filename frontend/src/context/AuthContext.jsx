@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { authApi, localAgentApi } from '../services/api';
+import { authApi } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -18,7 +18,6 @@ export function AuthProvider({ children }) {
       .me()
       .then((data) => {
         setUser(data.user);
-        localAgentApi.setToken(token); // Sync existing valid token to local agent
       })
       .catch((err) => {
         // Only log out if it's explicitly a 401 Unauthorized
@@ -49,7 +48,6 @@ export function AuthProvider({ children }) {
       localStorage.setItem('tt_token', data.token);
       localStorage.setItem('tt_user', JSON.stringify(data.user));
       setUser(data.user);
-      localAgentApi.setToken(data.token); // Sync with local agent
       return { success: true };
     } catch (err) {
       return { error: err.message };
@@ -62,7 +60,6 @@ export function AuthProvider({ children }) {
       localStorage.setItem('tt_token', data.token);
       localStorage.setItem('tt_user', JSON.stringify(data.user));
       setUser(data.user);
-      localAgentApi.setToken(data.token); // Sync with local agent
       return { success: true };
     } catch (err) {
       return { error: err.message };
@@ -73,7 +70,6 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('tt_token');
     localStorage.removeItem('tt_user');
     setUser(null);
-    localAgentApi.clearToken(); // Clear token from local agent
   };
 
   return (

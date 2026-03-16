@@ -59,26 +59,5 @@ export const claimApi = {
   getMy: () => apiRequest('/claims/my'),
 };
 
-export const localAgentApi = {
-  setToken: async (token) => {
-    try {
-      await fetch('http://localhost:5001/set-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token })
-      });
-    } catch (err) {
-      // Ignore if the agent isn't running on this machine
-      console.log('Local Python agent not detected.');
-    }
-  },
-  clearToken: async () => {
-    try {
-      await fetch('http://localhost:5001/clear-token', {
-        method: 'POST'
-      });
-    } catch (err) {
-      // Ignore
-    }
-  }
-};
+// Local agent synchronization logic removed as per user request for simplification.
+// The agent now polls the backend for active sessions.

@@ -513,100 +513,15 @@ def interactive_login():
             token = data["token"]
             API_TOKEN = token
             save_config_token(token)
-            print(f"\n✅ Logged in as {data['user']['name']}.")
-            print("Now run:  python agent.py\n")
+            print(f"\n✅ Logged in as {data['user']['name']}.\n")
         else:
             print(f"❌ Login failed: {data.get('message', 'Unknown error')}")
+            # If login failed, we can't proceed
+            import sys
+            sys.exit(1)
     except Exception as e:
         print(f"❌ Error: {e}")
 
-
-# ── Local Sync Server ─────────────────────────────────────────────────────────
-class SyncHandler(BaseHTTPRequestHandler):
-    def log_message(self, format, *args):
-        try:
-            log.info(format % args)
-        except:
-            pass
-
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
-        self.wfile.write(b'{"status":"agent_running"}')
-
-    def end_headers(self):
-        origin = self.headers.get('Origin', '*')
-        self.send_header('Access-Control-Allow-Origin', origin)
-        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept')
-        self.send_header('Access-Control-Allow-Private-Network', 'true')
-        super().end_headers()
-
-    def do_OPTIONS(self):
-        self.send_response(204)
-        self.end_headers()
-
-    def do_POST(self):
-        global API_TOKEN
-        
-        if self.path == '/set-token':
-            content_length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(content_length)
-            try:
-                data = json.loads(body)
-                new_token = data.get('token', '')
-                if new_token:
-                    if API_TOKEN and API_TOKEN != new_token:
-                        log.info("Token changed → ending previous session")
-                        if state.session_id:
-                            end_session()
-                            state.session_id = None
-
-                    API_TOKEN = new_token
-                    save_config_token(new_token)
-                    
-                    log.info("Received new token from Local Sync Server. Starting session...")
-                    if not state.session_id:
-                        start_session()
-                        
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(b'{"success":true}')
-                    return
-            except Exception as e:
-                log.error(f"Error parsing /set-token payload: {e}")
-                
-            self.send_response(400)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(b'{"success":false,"message":"Invalid payload"}')
-
-        elif self.path == '/clear-token':
-            log.info("Received clear-token from Local Sync Server. Logging out...")
-            API_TOKEN = ""
-            if state.session_id:
-                end_session()
-                
-            state.session_id = None
-            state.status = "out_of_shift"
-            save_config_token("")
-            
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(b'{"success":true}')
-
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-def run_sync_server():
-    server_address = ('127.0.0.1', 5001)
-    httpd = ThreadingHTTPServer(server_address, SyncHandler)
-    log.info("Local Sync Server running on port 5001")
-    httpd.serve_forever()
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 def main():
@@ -625,7 +540,13 @@ def main():
     API_TOKEN = os.getenv("TT_TOKEN", "")
 
     if not API_TOKEN:
-        log.warning("No API token found in config. Waiting for User to login via WebApp (Sync Server port 5001)...")
+        print("\n[FIRST TIME SETUP] No login found.")
+        interactive_login()
+        # Reload token after successful login
+        load_dotenv(CONFIG_FILE, override=True)
+        API_TOKEN = os.getenv("TT_TOKEN", "")
+        if not API_TOKEN:
+            return
 
     if not WIN32_AVAILABLE:
         log.warning("pywin32/psutil not installed — unproductive window detection disabled.")
@@ -657,10 +578,6 @@ def main():
     # Start monitor in background thread
     monitor_thread = threading.Thread(target=monitor_loop, daemon=True)
     monitor_thread.start()
-    
-    # Start sync server in background thread
-    sync_thread = threading.Thread(target=run_sync_server, daemon=True)
-    sync_thread.start()
 
     log.info("Agent running. Press Ctrl+C to stop.")
 

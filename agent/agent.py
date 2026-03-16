@@ -57,6 +57,9 @@ try:
 except ImportError:
     WIN32_AVAILABLE = False
 
+# ── Global state ─────────────────────────────────────────────────────────────
+_lock_socket = None
+
 # ── Config ──────────────────────────────────────────────────────────────────
 if getattr(sys, 'frozen', False):
     APP_DIR = Path(sys.executable).parent
@@ -213,6 +216,7 @@ class AgentState:
     def __init__(self):
         self.lock                   = threading.Lock()
         self.last_activity:  float  = time.time()
+        self._last_log_time: float  = 0.0
         self.status:         str    = "active"   # active | idle | away | unproductive | out_of_shift
         self.session_id             = None        # declared above as Optional[str]
         self.session_start          = None        # declared above as Optional[datetime]
@@ -231,12 +235,16 @@ class AgentState:
             if is_mouse and pos:
                 last_x, last_y = self.last_mouse_pos
                 curr_x, curr_y = pos
-                # Only count as activity if moved more than 4 pixels in any direction
-                if abs(curr_x - last_x) < 5 and abs(curr_y - last_y) < 5:
+                # Only count as activity if moved more than 9 pixels
+                if abs(curr_x - last_x) < 10 and abs(curr_y - last_y) < 10:
                     return
                 self.last_mouse_pos = pos
 
             self.last_activity = time.time()
+            # Log activity every 30s so we can see it's working in logs
+            if not hasattr(self, '_last_log_time') or (time.time() - self._last_log_time > 30):
+                log.debug(f"Activity detected (Type: {'Mouse' if is_mouse else 'Keyboard'})")
+                self._last_log_time = time.time()
 
     def seconds_since_activity(self):
         return time.time() - self.last_activity
@@ -325,6 +333,39 @@ def api_get(path):
         return None
 
 
+# ── Auth check ─────────────────────────────────────────────────────────────
+def validate_current_token():
+    global API_TOKEN
+    if not API_TOKEN: return False
+    try:
+        r = requests.get(
+            f"{API_BASE}/auth/me",
+            headers={"Authorization": f"Bearer {API_TOKEN}"},
+            timeout=10,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            return data.get("success", False)
+        if r.status_code == 401:
+            log.warning("Saved token is invalid or expired.")
+            return False
+    except:
+        pass
+    return True # Assume valid if network error to avoid lockout
+
+def check_single_instance():
+    """Simple check to prevent multiple agents from running."""
+    import socket
+    try:
+        # Create a lock socket
+        global _lock_socket
+        _lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        _lock_socket.bind(('127.0.0.1', 49152)) 
+    except socket.error:
+        print("\n❌ Error: Another instance of TimeTracker Agent is already running.")
+        print("Please check your Task Manager and close existing 'agent.exe'.")
+        sys.exit(1)
+
 # ── Session management ────────────────────────────────────────────────────────
 def start_session():
     shift_date = get_shift_date_str()
@@ -402,6 +443,11 @@ def send_event(event_type):
         "unproductiveSeconds":  int(state.unproductive_seconds),
     })
     log.info(f"Event sent: {event_type}")
+
+
+# ── Constants and Config ───────────────────────────────────────────────────────
+AGENT_VERSION = "2.1 (No-Sync-Server)"
+log = logging.getLogger("TimeTracker")
 
 
 # ── Input listeners ───────────────────────────────────────────────────────────
@@ -529,24 +575,35 @@ def main():
 
     parser = argparse.ArgumentParser(description="TimeTracker Activity Agent")
     parser.add_argument("--login", action="store_true", help="Login and save token to config")
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+
+    log.info(f"TimeTracker Agent v{AGENT_VERSION} starting…")
+    
+    check_single_instance()
 
     if args.login:
         interactive_login()
         return
 
-    # Reload token in case it was just saved
-    load_dotenv(CONFIG_FILE, override=True)
-    API_TOKEN = os.getenv("TT_TOKEN", "")
+    # Validate existing token
+    if API_TOKEN and not validate_current_token():
+        log.info("Saved token is invalid. Clearing and prompting for login...")
+        API_TOKEN = ""
+        save_config_token("")
 
     if not API_TOKEN:
-        print("\n[FIRST TIME SETUP] No login found.")
+        print("\n" + "="*40)
+        print("  TIMEFLOW AGENT - FIRST TIME SETUP")
+        print("="*40)
+        print("No login found. Please enter your credentials:")
         interactive_login()
         # Reload token after successful login
         load_dotenv(CONFIG_FILE, override=True)
         API_TOKEN = os.getenv("TT_TOKEN", "")
         if not API_TOKEN:
+            print("❌ No token received. Exiting.")
             return
+        log.info("Login successful. Token saved to .env")
 
     if not WIN32_AVAILABLE:
         log.warning("pywin32/psutil not installed — unproductive window detection disabled.")

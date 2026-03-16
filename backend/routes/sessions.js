@@ -49,9 +49,11 @@ router.post('/start', async (req, res) => {
       }
     }
 
-    // Force end ANY existing active sessions for this user on any machine (stale roaming sessions)
+    // Only end ANY existing active sessions for this user for the SAME date
+    // This prevents killing sessions started by other clients (UI/Agent) during 
+    // timezone crossover or slight calculation differences.
     await Session.updateMany(
-      { user: req.user._id, status: { $ne: 'ended' } },
+      { user: req.user._id, date, status: { $ne: 'ended' } },
       { $set: { status: 'ended', endTime: new Date() } }
     );
 

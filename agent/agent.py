@@ -67,7 +67,7 @@ CONFIG_FILE = APP_DIR / "agent_config.env"
 load_dotenv(CONFIG_FILE)
 
 API_BASE        = os.getenv("TT_API_BASE", "https://timeflow-backend.yuviiconsultancy.com/api")
-API_TOKEN       = os.getenv("TT_API_TOKEN", "")  # JWT token
+API_TOKEN       = os.getenv("TT_TOKEN", "")  # Corrected from TT_API_TOKEN to match .env
 HEARTBEAT_SEC   = int(os.getenv("TT_HEARTBEAT_SEC", "30"))   # how often to push data
 IDLE_THRESHOLD  = int(os.getenv("TT_IDLE_SEC",  "30"))       # 30s → idle
 AWAY_THRESHOLD  = int(os.getenv("TT_AWAY_SEC", "60"))        # 1 minute → away
@@ -89,6 +89,32 @@ def load_local_keywords():
                 log.info(f"Loaded {len(UNPRODUCTIVE_KEYWORDS)} unproductive keywords from local cache.")
         except Exception as e:
             log.warning(f"Failed to load keywords from local cache: {e}")
+
+def save_config_token(token):
+    """Saves the token to agent_config.env for persistence across restarts."""
+    try:
+        lines = []
+        if CONFIG_FILE.exists():
+            with open(CONFIG_FILE, "r") as f:
+                lines = f.readlines()
+        
+        token_found = False
+        new_lines = []
+        for line in lines:
+            if line.strip().startswith("TT_TOKEN="):
+                new_lines.append(f"TT_TOKEN={token}\n")
+                token_found = True
+            else:
+                new_lines.append(line)
+        
+        if not token_found:
+            new_lines.append(f"TT_TOKEN={token}\n")
+            
+        with open(CONFIG_FILE, "w") as f:
+            f.writelines(new_lines)
+        log.info(f"Token saved to {CONFIG_FILE}")
+    except Exception as e:
+        log.warning(f"Failed to save token to config: {e}")
 
 def fetch_and_update_keywords():
     global UNPRODUCTIVE_KEYWORDS
@@ -466,6 +492,7 @@ def interactive_login():
         if data.get("success"):
             token = data["token"]
             API_TOKEN = token
+            save_config_token(token)
             print(f"\n✅ Logged in as {data['user']['name']}.")
             print("Now run:  python agent.py\n")
         else:
@@ -517,6 +544,7 @@ class SyncHandler(BaseHTTPRequestHandler):
                             state.session_id = None
 
                     API_TOKEN = new_token
+                    save_config_token(new_token)
                     
                     log.info("Received new token from Local Sync Server. Starting session...")
                     if not state.session_id:
@@ -543,6 +571,7 @@ class SyncHandler(BaseHTTPRequestHandler):
                 
             state.session_id = None
             state.status = "out_of_shift"
+            save_config_token("")
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -573,7 +602,7 @@ def main():
 
     # Reload token in case it was just saved
     load_dotenv(CONFIG_FILE, override=True)
-    API_TOKEN = os.getenv("TT_API_TOKEN", "")
+    API_TOKEN = os.getenv("TT_TOKEN", "")
 
     if not API_TOKEN:
         log.warning("No API token found in config. Waiting for User to login via WebApp (Sync Server port 5001)...")

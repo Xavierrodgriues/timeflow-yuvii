@@ -83,7 +83,7 @@ export default function Dashboard() {
   const handleStartTracking = async () => {
     setLoadingAction(true);
     try {
-      await sessionApi.start({ fromUI: true });
+      await sessionApi.start({ fromUI: true, date: currentShiftStr });
       await fetchSessions();
     } catch (err) {
       console.error(err);

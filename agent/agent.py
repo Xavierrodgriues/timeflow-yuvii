@@ -236,6 +236,18 @@ def is_in_shift():
         return True
     return False
 
+def get_shift_date_str():
+    from datetime import timedelta
+    now = datetime.now()
+    hour = now.hour
+    minute = now.minute
+    
+    # Consistent with JS: shift starts at 19:30
+    if hour < 19 or (hour == 19 and minute < 30):
+        now -= timedelta(days=1)
+        
+    return now.strftime("%Y-%m-%d")
+
 
 state = AgentState()
 
@@ -270,7 +282,8 @@ def api_get(path):
 
 # ── Session management ────────────────────────────────────────────────────────
 def start_session():
-    data = api_post("/sessions/start", {"fromUI": False})
+    shift_date = get_shift_date_str()
+    data = api_post("/sessions/start", {"fromUI": False, "date": shift_date})
     if data:
         if data.get("success"):
             state.session_id    = data["session"]["_id"]

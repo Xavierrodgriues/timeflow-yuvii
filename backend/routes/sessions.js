@@ -33,8 +33,8 @@ function getShiftDateStr() {
 // ─────────────────────────────────────────────────────────────
 router.post('/start', async (req, res) => {
   try {
-    const { fromUI } = req.body || {};
-    const date = getShiftDateStr();
+    const { fromUI, date: clientDate } = req.body || {};
+    const date = clientDate || getShiftDateStr();
 
     // Check if there's an active session for THIS user
     let existing = await Session.findOne({ user: req.user._id, date, status: { $ne: 'ended' } });

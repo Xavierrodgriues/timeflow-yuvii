@@ -128,10 +128,15 @@ export default function Dashboard() {
         if (data.active.lastHeartbeat) {
           const lastHb = new Date(data.active.lastHeartbeat);
           const diff = Math.max(0, Math.floor((new Date() - lastHb) / 1000));
-          if (data.active.status === 'active') active += diff;
-          if (data.active.status === 'away') away += diff;
-          if (data.active.status === 'idle') idle += diff;
-          if (data.active.status === 'unproductive') unproductive += diff;
+          
+          // Only add catch-up time if it's less than 5 minutes.
+          // If it's more, the agent is likely dead/disconnected.
+          const cappedDiff = diff > 300 ? 0 : diff;
+
+          if (data.active.status === 'active') active += cappedDiff;
+          if (data.active.status === 'away') away += cappedDiff;
+          if (data.active.status === 'idle') idle += cappedDiff;
+          if (data.active.status === 'unproductive') unproductive += cappedDiff;
         }
 
         setLocalActiveSecs(active);

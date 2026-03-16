@@ -222,9 +222,20 @@ class AgentState:
         self.unproductive_seconds: float = 0.0
         self._last_tick:     float  = time.time()
         self.is_unproductive: bool  = False   # is the current window unproductive?
+        
+        # Jitter filtering for mouse (prevents phantom movement from keeping status 'active')
+        self.last_mouse_pos = (0, 0)
 
-    def record_activity(self):
+    def record_activity(self, is_mouse=False, pos=None):
         with self.lock:
+            if is_mouse and pos:
+                last_x, last_y = self.last_mouse_pos
+                curr_x, curr_y = pos
+                # Only count as activity if moved more than 4 pixels in any direction
+                if abs(curr_x - last_x) < 5 and abs(curr_y - last_y) < 5:
+                    return
+                self.last_mouse_pos = pos
+
             self.last_activity = time.time()
 
     def seconds_since_activity(self):
@@ -236,6 +247,14 @@ class AgentState:
         with self.lock:
             elapsed = now - self._last_tick
             self._last_tick = now
+
+            # ── Sleep/Wake Detection ───────────────────────────────────────
+            # If the jump is more than 30s, identify it as a time jump (likely sleep)
+            # Default to attributing it to 'away' if we were idle/away, or 'away' if it's large.
+            if elapsed > 30.0:
+                log.info(f"System wake detected! Jumped {elapsed:.1f} seconds. Attributing to AWAY.")
+                self.away_seconds += elapsed
+                return
 
             if self.status == "unproductive":
                 self.unproductive_seconds += elapsed
@@ -322,6 +341,7 @@ def start_session():
             state.unproductive_seconds = data["session"].get("unproductiveSeconds", 0)
             state.status         = "active" # Force active on resume/start
             state._last_tick     = time.time()
+            state.last_activity  = time.time()
             
             resumed = data.get("resumed", False)
             log.info(f"Session {'resumed' if resumed else 'started'}: {state.session_id}")
@@ -390,7 +410,7 @@ def on_key_press(key):
 
 
 def on_mouse_move(x, y):
-    state.record_activity()
+    state.record_activity(is_mouse=True, pos=(x, y))
 
 
 def on_mouse_click(x, y, button, pressed):
